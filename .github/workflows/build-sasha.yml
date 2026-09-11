@@ -8,56 +8,46 @@ permissions:
 jobs:
   build:
     runs-on: windows-latest
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
-      - name: Rebuild source bundle
+      - name: Rebuild Sasha Control source
         shell: pwsh
         run: |
-          $names = @('part00.txt','part01.txt','part02.txt','part03a.txt','part03b.txt','part04.txt','part05.txt','part06.txt','part07.txt')
-          $out = [IO.File]::Open('sasha-control.zip',[IO.FileMode]::Create)
-          try {
-            foreach ($name in $names) {
-              $p = Join-Path '.build-src' $name
-              $s = (Get-Content $p -Raw).Trim()
-              Write-Host "${name}: $($s.Length) chars"
-              if ($s -notmatch '^[A-Za-z0-9+/]*={0,2}$') { throw "Invalid base64 characters in $name" }
-              $bytes = [Convert]::FromBase64String($s)
-              $out.Write($bytes,0,$bytes.Length)
-            }
-          } finally { $out.Dispose() }
-          7z t sasha-control.zip
-          7z x sasha-control.zip -y
+          $b64 = ((Get-Content '.build-v4/part00.txt' -Raw).Trim()) + ((Get-Content '.build-v4/part01.txt' -Raw).Trim()) + ((Get-Content '.build-v4/rest.txt' -Raw).Trim())
+          [IO.File]::WriteAllBytes('SashaControl_Final_Build.zip', [Convert]::FromBase64String($b64))
+          7z t SashaControl_Final_Build.zip
+          7z x SashaControl_Final_Build.zip -y
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - name: Build bundled voice helper and icon
+      - name: Build bundled offline voice helper
         shell: pwsh
         working-directory: SashaControl_Final
         run: |
           python -m pip install --upgrade pip
-          python -m pip install pyinstaller faster-whisper sounddevice numpy pillow
-          python -c "from PIL import Image; im=Image.open('src/assets/logo.jpg').convert('RGBA'); im.save('src/assets/icon.ico',sizes=[(16,16),(32,32),(48,48),(64,64),(128,128),(256,256)])"
-          New-Item -ItemType Directory -Force voice-dist | Out-Null
+          python -m pip install pyinstaller faster-whisper sounddevice numpy
           pyinstaller --onefile --noconsole --name voice_helper --collect-all faster_whisper --collect-all ctranslate2 --collect-all sounddevice --collect-all tokenizers --collect-all huggingface_hub voice/voice_helper.py
+          New-Item -ItemType Directory -Force voice-dist | Out-Null
           Copy-Item dist/voice_helper.exe voice-dist/voice_helper.exe
-          Remove-Item -Recurse -Force dist
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
       - name: Install dependencies
         working-directory: SashaControl_Final
         run: npm install
-      - name: Validate JavaScript
+      - name: Validate application
         working-directory: SashaControl_Final
         run: npm run check
-      - name: Build Windows installer and portable EXE
+      - name: Build installer and portable EXE
         working-directory: SashaControl_Final
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
         run: npm run dist:win
-      - name: Upload Windows artifacts
+      - name: Upload Windows EXE
         uses: actions/upload-artifact@v4
         with:
           name: SashaControl-Windows-x64
           path: SashaControl_Final/dist/*.exe
           if-no-files-found: error
+          retention-days: 7
