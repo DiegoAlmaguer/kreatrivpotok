@@ -19,7 +19,7 @@ jobs:
             foreach ($name in $names) {
               $p = Join-Path '.build-src' $name
               $s = (Get-Content $p -Raw).Trim()
-              Write-Host "$name: $($s.Length) chars"
+              Write-Host "${name}: $($s.Length) chars"
               if ($s -notmatch '^[A-Za-z0-9+/]*={0,2}$') { throw "Invalid base64 characters in $name" }
               $bytes = [Convert]::FromBase64String($s)
               $out.Write($bytes,0,$bytes.Length)
