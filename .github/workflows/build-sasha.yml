@@ -13,13 +13,14 @@ jobs:
       - name: Rebuild source bundle
         shell: pwsh
         run: |
+          $names = @('part00.txt','part01.txt','part02.txt','part03a.txt','part03b.txt','part04.txt','part05.txt','part06.txt','part07.txt')
           $out = [IO.File]::Open('sasha-control.zip',[IO.FileMode]::Create)
           try {
-            $parts = Get-ChildItem .build-src/part*.txt | Sort-Object Name
-            foreach ($p in $parts) {
-              $s = (Get-Content $p.FullName -Raw).Trim()
-              Write-Host "$($p.Name): $($s.Length) chars"
-              if ($s -notmatch '^[A-Za-z0-9+/]*={0,2}$') { throw "Invalid base64 characters in $($p.Name)" }
+            foreach ($name in $names) {
+              $p = Join-Path '.build-src' $name
+              $s = (Get-Content $p -Raw).Trim()
+              Write-Host "$name: $($s.Length) chars"
+              if ($s -notmatch '^[A-Za-z0-9+/]*={0,2}$') { throw "Invalid base64 characters in $name" }
               $bytes = [Convert]::FromBase64String($s)
               $out.Write($bytes,0,$bytes.Length)
             }
