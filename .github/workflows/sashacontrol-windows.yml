@@ -1,0 +1,34 @@
+name: Sasha Control Windows Build
+
+on:
+  push:
+    branches: [ sashacontrol-ci ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Extract Sasha Control
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path sashacontrol | Out-Null
+          Expand-Archive -Path SashaControl_2.0_FULL_SOURCE.zip -DestinationPath sashacontrol -Force
+      - name: Install dependencies
+        working-directory: sashacontrol
+        run: npm install
+      - name: Build Windows EXE
+        working-directory: sashacontrol
+        run: npm run dist:win
+      - name: Upload Windows build
+        uses: actions/upload-artifact@v4
+        with:
+          name: SashaControl-Windows-v2
+          path: sashacontrol/dist/*
+          if-no-files-found: error
