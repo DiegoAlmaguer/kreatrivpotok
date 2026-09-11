@@ -13,9 +13,18 @@ jobs:
       - name: Rebuild source bundle
         shell: pwsh
         run: |
-          $parts = Get-ChildItem .build-src/part*.txt | Sort-Object Name
-          $b64 = ($parts | ForEach-Object { Get-Content $_.FullName -Raw }) -join ''
-          [IO.File]::WriteAllBytes('sasha-control.zip',[Convert]::FromBase64String($b64))
+          $out = [IO.File]::Open('sasha-control.zip',[IO.FileMode]::Create)
+          try {
+            $parts = Get-ChildItem .build-src/part*.txt | Sort-Object Name
+            foreach ($p in $parts) {
+              $s = (Get-Content $p.FullName -Raw).Trim()
+              Write-Host "$($p.Name): $($s.Length) chars"
+              if ($s -notmatch '^[A-Za-z0-9+/]*={0,2}$') { throw "Invalid base64 characters in $($p.Name)" }
+              $bytes = [Convert]::FromBase64String($s)
+              $out.Write($bytes,0,$bytes.Length)
+            }
+          } finally { $out.Dispose() }
+          7z t sasha-control.zip
           7z x sasha-control.zip -y
       - uses: actions/setup-python@v5
         with:
