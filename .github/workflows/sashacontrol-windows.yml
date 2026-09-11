@@ -3,6 +3,8 @@ name: Sasha Control Windows Build
 on:
   push:
     branches: [ sashacontrol-ci ]
+  pull_request:
+    branches: [ main ]
   workflow_dispatch:
 
 jobs:
