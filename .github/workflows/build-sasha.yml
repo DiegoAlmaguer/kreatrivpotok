@@ -10,19 +10,23 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Unpack Sasha Control source
+      - name: Rebuild source bundle
         shell: pwsh
         run: |
+          $parts = Get-ChildItem .build-src/part*.txt | Sort-Object Name
+          $b64 = ($parts | ForEach-Object { Get-Content $_.FullName -Raw }) -join ''
+          [IO.File]::WriteAllBytes('sasha-control.zip',[Convert]::FromBase64String($b64))
           7z x sasha-control.zip -y
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - name: Build voice helper
+      - name: Build bundled voice helper and icon
         shell: pwsh
         working-directory: SashaControl_Final
         run: |
           python -m pip install --upgrade pip
-          python -m pip install pyinstaller faster-whisper sounddevice numpy
+          python -m pip install pyinstaller faster-whisper sounddevice numpy pillow
+          python -c "from PIL import Image; im=Image.open('src/assets/logo.jpg').convert('RGBA'); im.save('src/assets/icon.ico',sizes=[(16,16),(32,32),(48,48),(64,64),(128,128),(256,256)])"
           New-Item -ItemType Directory -Force voice-dist | Out-Null
           pyinstaller --onefile --noconsole --name voice_helper --collect-all faster_whisper --collect-all ctranslate2 --collect-all sounddevice --collect-all tokenizers --collect-all huggingface_hub voice/voice_helper.py
           Copy-Item dist/voice_helper.exe voice-dist/voice_helper.exe
