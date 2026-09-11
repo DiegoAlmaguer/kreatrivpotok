@@ -13,7 +13,7 @@ jobs:
       - name: Unpack Sasha Control source
         shell: pwsh
         run: |
-          Expand-Archive -Path sasha-control.zip -DestinationPath . -Force
+          7z x sasha-control.zip -y
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
